@@ -12,7 +12,7 @@ from flask import Flask
 import os
 import psycopg2
 import datetime
-import mysql.connector
+ 
 import re
 import nltk
 nltk.download('punkt')
@@ -22,6 +22,7 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from textblob import TextBlob
 
+os.environ['DATABASE_URL'] = "postgres://tfatzcjxgawcqu:a6856c0482b249cad8c279a73d10f58af3ed44968fee08a954df3c1f618b44ce@ec2-54-175-243-75.compute-1.amazonaws.com:5432/dmbprtilaeg1d"
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
@@ -30,10 +31,10 @@ app.title = 'Real-Time Twitter Monitor'
 server = app.server
 
 app.layout = html.Div(children=[
-    html.H2('实时推特关键词情感分析平台', style={
+    html.H2('Real-time Twitter Sentiment Analysis for Brand Improvement and Topic Tracking ', style={
         'textAlign': 'center'
     }),
-    html.H4('关键词："Xinjiang"(新疆)', style={
+    html.H4('(Last updated: Aug 23, 2019)', style={
         'textAlign': 'right'
     }),
     
@@ -41,69 +42,69 @@ app.layout = html.Div(children=[
     html.Div(id='live-update-graph'),
     html.Div(id='live-update-graph-bottom'),
 
-    # # Author's Words
-    # html.Div(
-    #     className='row',
-    #     children=[ 
-    #         dcc.Markdown("__Author's Words__: Dive into the industry and get my hands dirty. That's why I start this self-motivated independent project. If you like it, I would appreciate for starring⭐️ my project on [GitHub](https://github.com/Chulong-Li/Real-time-Sentiment-Tracking-on-Twitter-for-Brand-Improvement-and-Trend-Recognition)!✨"),
-    #     ],style={'width': '35%', 'marginLeft': 70}
-    # ),
-    # html.Br(),
+    # Author's Words
+    html.Div(
+        className='row',
+        children=[ 
+            dcc.Markdown("__Author's Words__: Dive into the industry and get my hands dirty. That's why I start this self-motivated independent project. If you like it, I would appreciate for starring⭐️ my project on [GitHub](https://github.com/Chulong-Li/Real-time-Sentiment-Tracking-on-Twitter-for-Brand-Improvement-and-Trend-Recognition)!✨"),
+        ],style={'width': '35%', 'marginLeft': 70}
+    ),
+    html.Br(),
     
-    # # ABOUT ROW
-    # html.Div(
-    #     className='row',
-    #     children=[
-    #         html.Div(
-    #             className='three columns',
-    #             children=[
-    #                 html.P(
-    #                 'Data extracted from:'
-    #                 ),
-    #                 html.A(
-    #                     'Twitter API',
-    #                     href='https://developer.twitter.com'
-    #                 )                    
-    #             ]
-    #         ),
-    #         html.Div(
-    #             className='three columns',
-    #             children=[
-    #                 html.P(
-    #                 'Code avaliable at:'
-    #                 ),
-    #                 html.A(
-    #                     'GitHub',
-    #                     href='https://github.com/Chulong-Li/Real-time-Sentiment-Tracking-on-Twitter-for-Brand-Improvement-and-Trend-Recognition'
-    #                 )                    
-    #             ]
-    #         ),
-    #         html.Div(
-    #             className='three columns',
-    #             children=[
-    #                 html.P(
-    #                 'Made with:'
-    #                 ),
-    #                 html.A(
-    #                     'Dash / Plot.ly',
-    #                     href='https://plot.ly/dash/'
-    #                 )                    
-    #             ]
-    #         ),
-    #         html.Div(
-    #             className='three columns',
-    #             children=[
-    #                 html.P(
-    #                 'Author:'
-    #                 ),
-    #                 html.A(
-    #                     'Chulong Li',
-    #                     href='https://www.linkedin.com/in/chulong-li/'
-    #                 )                    
-    #             ]
-    #         )                                                          
-    #     ], style={'marginLeft': 70, 'fontSize': 16}
-    # ),
+    # ABOUT ROW
+    html.Div(
+        className='row',
+        children=[
+            html.Div(
+                className='three columns',
+                children=[
+                    html.P(
+                    'Data extracted from:'
+                    ),
+                    html.A(
+                        'Twitter API',
+                        href='https://developer.twitter.com'
+                    )                    
+                ]
+            ),
+            html.Div(
+                className='three columns',
+                children=[
+                    html.P(
+                    'Code avaliable at:'
+                    ),
+                    html.A(
+                        'GitHub',
+                        href='https://github.com/Chulong-Li/Real-time-Sentiment-Tracking-on-Twitter-for-Brand-Improvement-and-Trend-Recognition'
+                    )                    
+                ]
+            ),
+            html.Div(
+                className='three columns',
+                children=[
+                    html.P(
+                    'Made with:'
+                    ),
+                    html.A(
+                        'Dash / Plot.ly',
+                        href='https://plot.ly/dash/'
+                    )                    
+                ]
+            ),
+            html.Div(
+                className='three columns',
+                children=[
+                    html.P(
+                    'Author:'
+                    ),
+                    html.A(
+                        'Chulong Li',
+                        href='https://www.linkedin.com/in/chulong-li/'
+                    )                    
+                ]
+            )                                                          
+        ], style={'marginLeft': 70, 'fontSize': 16}
+    ),
 
     dcc.Interval(
         id='interval-component-slow',
@@ -118,13 +119,10 @@ app.layout = html.Div(children=[
 @app.callback(Output('live-update-graph', 'children'),
               [Input('interval-component-slow', 'n_intervals')])
 def update_graph_live(n):
-    conn = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        passwd="carinashou1203",
-        database="TwitterDB",
-        charset = 'utf8'
-    )
+
+    # Loading data from Heroku PostgreSQL
+    DATABASE_URL = os.environ['DATABASE_URL']
+    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
     query = "SELECT id_str, text, created_at, polarity, user_location, user_followers_count FROM {}".format(settings.TABLE_NAME)
     df = pd.read_sql(query, con=conn)
 
@@ -144,18 +142,18 @@ def update_graph_live(n):
     neg_num = result[result['Time']>min10]["Num of '{}' mentions".format(settings.TRACK_WORDS[0])][result['polarity']==-1].sum()
     pos_num = result[result['Time']>min10]["Num of '{}' mentions".format(settings.TRACK_WORDS[0])][result['polarity']==1].sum()
     
-    # # Loading back-up summary data
-    # query = "SELECT daily_user_num, daily_tweets_num, impressions FROM {}".format(settings.TABLE_NAME)
-    # back_up = pd.read_sql(query, con=conn)  
-    # daily_tweets_num = back_up['daily_tweets_num'].iloc[0] + result[-6:-3]["Num of '{}' mentions".format(settings.TRACK_WORDS[0])].sum()
-    # daily_impressions = back_up['impressions'].iloc[0] + df[df['created_at'] > (datetime.datetime.now() - datetime.timedelta(hours=7, seconds=10))]['user_followers_count'].sum()
+    # Loading back-up summary data
+    query = "SELECT daily_user_num, daily_tweets_num, impressions FROM Back_Up;"
+    back_up = pd.read_sql(query, con=conn)  
+    daily_tweets_num = back_up['daily_tweets_num'].iloc[0] + result[-6:-3]["Num of '{}' mentions".format(settings.TRACK_WORDS[0])].sum()
+    daily_impressions = back_up['impressions'].iloc[0] + df[df['created_at'] > (datetime.datetime.now() - datetime.timedelta(hours=7, seconds=10))]['user_followers_count'].sum()
     cur = conn.cursor()
 
-    # PDT_now = datetime.datetime.now() - datetime.timedelta(hours=7)
-    # if PDT_now.strftime("%H%M")=='0000':
-    #     cur.execute("UPDATE {} SET daily_tweets_num = 0, impressions = 0;".format(settings.TABLE_NAME))
-    # else:
-    #     cur.execute("UPDATE {} SET daily_tweets_num = {}, impressions = {};".format(settings.TABLE_NAME, daily_tweets_num, daily_impressions))
+    PDT_now = datetime.datetime.now() - datetime.timedelta(hours=7)
+    if PDT_now.strftime("%H%M")=='0000':
+        cur.execute("UPDATE Back_Up SET daily_tweets_num = 0, impressions = 0;")
+    else:
+        cur.execute("UPDATE Back_Up SET daily_tweets_num = {}, impressions = {};".format(daily_tweets_num, daily_impressions))
     conn.commit()
     cur.close()
     conn.close()
@@ -176,7 +174,7 @@ def update_graph_live(n):
                                     go.Scatter(
                                         x=time_series,
                                         y=result["Num of '{}' mentions".format(settings.TRACK_WORDS[0])][result['polarity']==0].reset_index(drop=True),
-                                        name="中性",
+                                        name="Neutrals",
                                         opacity=0.8,
                                         mode='lines',
                                         line=dict(width=0.5, color='rgb(131, 90, 241)'),
@@ -185,7 +183,7 @@ def update_graph_live(n):
                                     go.Scatter(
                                         x=time_series,
                                         y=result["Num of '{}' mentions".format(settings.TRACK_WORDS[0])][result['polarity']==-1].reset_index(drop=True).apply(lambda x: -x),
-                                        name="负面",
+                                        name="Negatives",
                                         opacity=0.8,
                                         mode='lines',
                                         line=dict(width=0.5, color='rgb(255, 50, 50)'),
@@ -194,127 +192,124 @@ def update_graph_live(n):
                                     go.Scatter(
                                         x=time_series,
                                         y=result["Num of '{}' mentions".format(settings.TRACK_WORDS[0])][result['polarity']==1].reset_index(drop=True),
-                                        name="正面",
+                                        name="Positives",
                                         opacity=0.8,
                                         mode='lines',
                                         line=dict(width=0.5, color='rgb(184, 247, 212)'),
                                         stackgroup='three' 
                                     )
-                                ],
-                                'layout': {
-                                    'title': "含关键词推文情感分析"
-                                }
+                                ]
                             }
                         )
                     ], style={'width': '73%', 'display': 'inline-block', 'padding': '0 0 0 20'}),
                     
-                    # html.Div([
-                    #     dcc.Graph(
-                    #         id='pie-chart',
-                    #         figure={
-                    #             'data': [
-                    #                 go.Pie(
-                    #                     labels=['Positives', 'Negatives', 'Neutrals'], 
-                    #                     values=[pos_num, neg_num, neu_num],
-                    #                     name="View Metrics",
-                    #                     marker_colors=['rgba(184, 247, 212, 0.6)','rgba(255, 50, 50, 0.6)','rgba(131, 90, 241, 0.6)'],
-                    #                     textinfo='value',
-                    #                     hole=.65)
-                    #             ],
-                    #             'layout':{
-                    #                 'showlegend':False,
-                    #                 'title':'Tweets In Last 10 Mins',
-                    #                 'annotations':[
-                    #                     dict(
-                    #                         text='{0:.1f}K'.format((pos_num+neg_num+neu_num)/1000),
-                    #                         font=dict(
-                    #                             size=40
-                    #                         ),
-                    #                         showarrow=False
-                    #                     )
-                    #                 ]
-                    #             }
+                    html.Div([
+                        dcc.Graph(
+                            id='pie-chart',
+                            figure={
+                                'data': [
+                                    go.Pie(
+                                        labels=['Positives', 'Negatives', 'Neutrals'], 
+                                        values=[pos_num, neg_num, neu_num],
+                                        name="View Metrics",
+                                        marker_colors=['rgba(184, 247, 212, 0.6)','rgba(255, 50, 50, 0.6)','rgba(131, 90, 241, 0.6)'],
+                                        textinfo='value',
+                                        hole=.65)
+                                ],
+                                'layout':{
+                                    'showlegend':False,
+                                    'title':'Tweets In Last 10 Mins',
+                                    'annotations':[
+                                        dict(
+                                            text='{0:.1f}K'.format((pos_num+neg_num+neu_num)/1000),
+                                            font=dict(
+                                                size=40
+                                            ),
+                                            showarrow=False
+                                        )
+                                    ]
+                                }
 
-                    #         }
-                    #     )
-                    # ], style={'width': '27%', 'display': 'inline-block'})
+                            }
+                        )
+                    ], style={'width': '27%', 'display': 'inline-block'})
                 ]),
                 
                 html.Div(
                     className='row',
                     children=[
-                        # html.Div(
-                        #     children=[
-                        #         html.P('Tweets/10 Mins Changed By',
-                        #             style={
-                        #                 'fontSize': 17
-                        #             }
-                        #         ),
-                        #         html.P('{0:.2f}%'.format(percent) if percent <= 0 else '+{0:.2f}%'.format(percent),
-                        #             style={
-                        #                 'fontSize': 40
-                        #             }
-                        #         )
-                        #     ], 
-                        #     style={
-                        #         'width': '20%', 
-                        #         'display': 'inline-block'
-                        #     }
+                        html.Div(
+                            children=[
+                                html.P('Tweets/10 Mins Changed By',
+                                    style={
+                                        'fontSize': 17
+                                    }
+                                ),
+                                html.P('{0:.2f}%'.format(percent) if percent <= 0 else '+{0:.2f}%'.format(percent),
+                                    style={
+                                        'fontSize': 40
+                                    }
+                                )
+                            ], 
+                            style={
+                                'width': '20%', 
+                                'display': 'inline-block'
+                            }
 
-                        # ),
-                        # html.Div(
-                        #     children=[
-                        #         html.P('Potential Impressions Today',
-                        #             style={
-                        #                 'fontSize': 17
-                        #             }
-                        #         ),
-                        #         html.P('{0:.1f}K'.format(daily_impressions/1000) \
-                        #                 if daily_impressions < 1000000 else \
-                        #                     ('{0:.1f}M'.format(daily_impressions/1000000) if daily_impressions < 1000000000 \
-                        #                     else '{0:.1f}B'.format(daily_impressions/1000000000)),
-                        #             style={
-                        #                 'fontSize': 40
-                        #             }
-                        #         )
-                        #     ], 
-                        #     style={
-                        #         'width': '20%', 
-                        #         'display': 'inline-block'
-                        #     }
-                        # ),
-                        # html.Div(
-                        #     children=[
-                        #         html.P('Tweets Posted Today',
-                        #             style={
-                        #                 'fontSize': 17
-                        #             }
-                        #         ),
-                        #         html.P('{0:.1f}K'.format(daily_tweets_num/1000),
-                        #             style={
-                        #                 'fontSize': 40
-                        #             }
-                        #         )
-                        #     ], 
-                        #     style={
-                        #         'width': '20%', 
-                        #         'display': 'inline-block'
-                        #     }
-                        # ),
+                        ),
+                        html.Div(
+                            children=[
+                                html.P('Potential Impressions Today',
+                                    style={
+                                        'fontSize': 17
+                                    }
+                                ),
+                                html.P('{0:.1f}K'.format(daily_impressions/1000) \
+                                        if daily_impressions < 1000000 else \
+                                            ('{0:.1f}M'.format(daily_impressions/1000000) if daily_impressions < 1000000000 \
+                                            else '{0:.1f}B'.format(daily_impressions/1000000000)),
+                                    style={
+                                        'fontSize': 40
+                                    }
+                                )
+                            ], 
+                            style={
+                                'width': '20%', 
+                                'display': 'inline-block'
+                            }
+                        ),
+                        html.Div(
+                            children=[
+                                html.P('Tweets Posted Today',
+                                    style={
+                                        'fontSize': 17
+                                    }
+                                ),
+                                html.P('{0:.1f}K'.format(daily_tweets_num/1000),
+                                    style={
+                                        'fontSize': 40
+                                    }
+                                )
+                            ], 
+                            style={
+                                'width': '20%', 
+                                'display': 'inline-block'
+                            }
+                        ),
 
-                        # html.Div(
-                        #     children=[
-                        #         html.P("目前追踪词为 \"Xinjiang\" (新疆)",
-                        #             style={
-                        #                 'fontSize': 25
-                        #             }
-                        #         ),
-                        #     ], 
-                        #     style={
-                        #         'width': '40%', 
-                        #         'display': 'inline-block'
-                        #     }
-                        # ),
+                        html.Div(
+                            children=[
+                                html.P("Currently tracking \"Facebook\" brand (NASDAQ: FB) on Twitter in Pacific Daylight Time (PDT).",
+                                    style={
+                                        'fontSize': 25
+                                    }
+                                ),
+                            ], 
+                            style={
+                                'width': '40%', 
+                                'display': 'inline-block'
+                            }
+                        ),
 
                     ],
                     style={'marginLeft': 70}
@@ -328,13 +323,8 @@ def update_graph_live(n):
 def update_graph_bottom_live(n):
 
     # Loading data from Heroku PostgreSQL
-    conn = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        passwd="carinashou1203",
-        database="TwitterDB",
-        charset = 'utf8'
-    )
+    DATABASE_URL = os.environ['DATABASE_URL']
+    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
     query = "SELECT id_str, text, created_at, polarity, user_location FROM {}".format(settings.TABLE_NAME)
     df = pd.read_sql(query, con=conn)
     conn.close()
@@ -375,7 +365,7 @@ def update_graph_bottom_live(n):
 
 
     geo_dist['Full State Name'] = geo_dist['State'].apply(lambda x: INV_STATE_DICT[x])
-    geo_dist['text'] = geo_dist['Full State Name'] + '<br>' + '数量: ' + geo_dist['Number'].astype(str)
+    geo_dist['text'] = geo_dist['Full State Name'] + '<br>' + 'Num: ' + geo_dist['Number'].astype(str)
 
 
     tokenized_word = word_tokenize(content)
@@ -415,7 +405,6 @@ def update_graph_bottom_live(n):
                                 )
                             ],
                             'layout':{
-                                'title': "同现词频率(和关键词同时出现在一个推文中)",
                                 'hovermode':"closest"
                             }
                         }        
@@ -433,7 +422,7 @@ def update_graph_bottom_live(n):
                                     #colorscale = "Blues",
                                     text=geo_dist['text'], # hover text
                                     geo = 'geo',
-                                    # colorbar_title = "Num in Log2",
+                                    colorbar_title = "Num in Log2",
                                     marker_line_color='white',
                                     colorscale = ["#fdf7ff", "#835af1"],
                                     #autocolorscale=False,
@@ -441,7 +430,7 @@ def update_graph_bottom_live(n):
                                 ) 
                             ],
                             'layout': {
-                                'title': "美国用户地理分布",
+                                'title': "Geographic Segmentation for US",
                                 'geo':{'scope':'usa'}
                             }
                         }
